@@ -8,6 +8,7 @@ import cloudscraper
 
 scraper = cloudscraper.create_scraper()  # returns a CloudScraper instance
 
+# Cambiar URLs por las busquedas deseadas segun lo que se está buscando
 urls = {
     "https://www.argenprop.com/departamento-y-ph-alquiler-barrio-palermo-barrio-br-norte-2-dormitorios-y-3-dormitorios-hasta-45000-pesos-desde-55-m2-cubiertos",
     "https://www.zonaprop.com.ar/departamentos-alquiler-recoleta-mas-de-3-ambientes-menos-40000-pesos.html"
@@ -23,15 +24,21 @@ class Parser:
         soup = BeautifulSoup(contents, "lxml")
         ads = soup.select(self.link_regex)
         for ad in ads:
-            href = ad["href"]
+            if 'data-to-posting' in self.link_regex:
+                href = ad["data-to-posting"]
+            else:
+                href = ad["href"]
             _id = sha1(href.encode("utf-8")).hexdigest()
             yield {"id": _id, "url": "{}{}".format(self.website, href)}
 
 
 parsers = [
-    Parser(website="https://www.zonaprop.com.ar", link_regex="a.go-to-posting"),
-    Parser(website="https://www.argenprop.com", link_regex="div.listing__items div.listing__item a"),
-    Parser(website="https://inmuebles.mercadolibre.com.ar", link_regex="li.results-item .rowItem.item a"),
+    Parser(website="https://www.zonaprop.com.ar",
+           link_regex="div[data-to-posting]"),
+    Parser(website="https://www.argenprop.com",
+           link_regex="div.listing__items div.listing__item a"),
+    Parser(website="https://inmuebles.mercadolibre.com.ar",
+           link_regex="li.results-item .rowItem.item a"),
 ]
 
 
@@ -66,16 +73,20 @@ def split_seen_and_unseen(ads):
 def get_history():
     try:
         with open("seen.txt", "r") as f:
-            return {l.rstrip() for l in f.readlines()}
-    except:
+            return {line.rstrip() for line in f.readlines()}
+    except Exception:
         return set()
 
 
 def notify(ad):
-    bot = ""
-    room = ""
-    url = "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(bot, room, ad["url"])
-    r = requests.get(url)
+    bot = None  # Completar con el token del bot
+    room = None  # Completar con la sala donde enviar los mensajes
+    url = f"https://api.telegram.org/bot{bot}/sendMessage?chat_id={room}"\
+          f"&text={ad['url']}"
+    if bot is not None and room is not None:
+        requests.get(url)
+    else:
+        print(f"\n Nuevo resultado encontrado!: {ad['url']}")
 
 
 def mark_as_seen(unseen):
